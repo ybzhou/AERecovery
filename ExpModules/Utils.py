@@ -33,4 +33,4 @@ def greedy_pair(W, W_hat):
     ret = np.zeros(dist.shape[0])
     for i, j in paired:
         ret[i] = dist[i, j]
-    return ret.mean()
+    return ret

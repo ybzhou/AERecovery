@@ -16,7 +16,7 @@ M = 200
 D = 180
 p = 0.02
 l_max = 1
-n_epoch = 1#100
+n_epoch = 100
 batch_size = 100
 regc = torch.FloatTensor([1e-3])
 disp_freq = 100
@@ -39,14 +39,12 @@ norm_data = torch.from_numpy(data).type(torch.FloatTensor)
 model = AutoEncoder(D, M, F.relu)
 if cuda:
     model.cuda()
-    model.W.cuda()
-    norm_data.cuda()
     regc = Variable(regc.cuda())
 else:
     regc = Variable(regc)
 cost_func = nn.MSELoss(size_average=False)
-# opt = optim.SGD(model.parameters(), lr = 0.01)
-opt = optim.Adam(model.parameters(), lr = 1e-3)
+opt = optim.SGD(model.parameters(), lr = 0.01)
+# opt = optim.Adam(model.parameters(), lr = 1e-3)
 
 cost = []
 coherence = []
@@ -57,11 +55,20 @@ for epoch in range(n_epoch):
     running_loss = 0.0
     running_coherence = 0.0
     running_sparsity = 0.0
+
+    perm_idx = np.random.permutation(N)
+    norm_data = torch.from_numpy(data[perm_idx]).type(torch.FloatTensor)
+    if cuda:
+        norm_data.cuda()
+
     #h_recovered = None
     for batch_idx in range(n_batch):
         opt.zero_grad()
 
-        x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:].cuda())
+        if cuda:
+            x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:].cuda())
+        else:
+            x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:])
         x_hat = model(x)
         #if h_recovered is None:
         #    h_recovered = model.hidden().data.numpy()
@@ -91,8 +98,9 @@ for epoch in range(n_epoch):
     else:
         W_hat = model.W.data.numpy().astype('float64').T
     W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
-    dot.append(greedy_pair(W, W_hat))
-    print('avg dot: {}'.format(dot[-1]))
+    ret = greedy_pair(W, W_hat)
+    dot.append(ret.mean())
+    print('avg dot: {}, min: {}, max: {}'.format(dot[-1], ret.min(), ret.max()))
 
 
 x_axis = np.linspace(0, n_epoch*batch_size, len(coherence))
