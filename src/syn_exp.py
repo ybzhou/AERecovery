@@ -6,8 +6,8 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from torch.autograd import Variable
-from ..ExpModules.AutoEncoder import AutoEncoder
-from ..ExpModules.Utils import *
+from ExpModules.AutoEncoder import AutoEncoder
+from ExpModules.Utils import *
 
 
 seed = 123
@@ -16,11 +16,11 @@ M = 200
 D = 180
 p = 0.02
 l_max = 1
-n_epoch = 100
+n_epoch = 1#100
 batch_size = 100
-regc = 1e-3
+regc = torch.FloatTensor([1e-3])
 disp_freq = 100
-
+cuda = torch.cuda.is_available()
 torch.manual_seed(seed)
 np.random.seed(seed)
 
@@ -37,7 +37,13 @@ norm_data = torch.from_numpy(data).type(torch.FloatTensor)
 
 
 model = AutoEncoder(D, M, F.relu)
-
+if cuda:
+    model.cuda()
+    model.W.cuda()
+    norm_data.cuda()
+    regc = Variable(regc.cuda())
+else:
+    regc = Variable(regc)
 cost_func = nn.MSELoss(size_average=False)
 # opt = optim.SGD(model.parameters(), lr = 0.01)
 opt = optim.Adam(model.parameters(), lr = 1e-3)
@@ -51,16 +57,16 @@ for epoch in range(n_epoch):
     running_loss = 0.0
     running_coherence = 0.0
     running_sparsity = 0.0
-    h_recovered = None
+    #h_recovered = None
     for batch_idx in range(n_batch):
         opt.zero_grad()
 
-        x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:])
+        x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:].cuda())
         x_hat = model(x)
-        if h_recovered is None:
-            h_recovered = model.hidden().data.numpy()
-        else:
-            h_recovered = np.vstack((h_recovered, model.hidden().data.numpy()))
+        #if h_recovered is None:
+        #    h_recovered = model.hidden().data.numpy()
+        #else:
+        #    h_recovered = np.vstack((h_recovered, model.hidden().data.numpy()))
 
         loss = cost_func(x_hat, x) + regc*model.regularizer()
         loss.backward()
@@ -79,8 +85,11 @@ for epoch in range(n_epoch):
             running_loss = 0.0
             running_coherence = 0.0
             running_sparsity = 0.0
-
-    W_hat = model.W.data.numpy().astype('float64').T
+    
+    if cuda:
+        W_hat = model.W.data.cpu().numpy().astype('float64').T
+    else:
+        W_hat = model.W.data.numpy().astype('float64').T
     W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
     dot.append(greedy_pair(W, W_hat))
     print('avg dot: {}'.format(dot[-1]))
