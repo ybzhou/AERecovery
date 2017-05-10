@@ -6,9 +6,8 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from torch.autograd import Variable
-from ExpModules.AutoEncoder import AutoEncoder
-from ExpModules.Utils import *
-
+from ..ExpModules.AutoEncoder import AutoEncoder
+from ..ExpModules.Utils import *
 
 
 seed = 123
