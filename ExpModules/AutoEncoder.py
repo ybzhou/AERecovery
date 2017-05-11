@@ -6,20 +6,24 @@ from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 
 class AutoEncoder(nn.Module):
-    def __init__(self, x_dim, h_dim, act_func):
+    def __init__(self, x_dim, h_dim, act_func, W=None):
         super(AutoEncoder, self).__init__()
         self.x_dim = x_dim
         self.h_dim = h_dim
         self.f = act_func
-        self.W = Parameter(torch.FloatTensor(x_dim, h_dim))
+        if W is None:
+            self.W = Parameter(torch.FloatTensor(x_dim, h_dim))
+            # init.xavier_uniform(self.W)
+            init.orthogonal(self.W)
+        else:
+            self.W = Parameter(torch.FloatTensor(W))
         self.bn = nn.BatchNorm1d(h_dim)
-        init.orthogonal(self.W)
-        # init.xavier_uniform(self.W)
 
     def forward(self, x):
         W_norm = torch.norm(self.W, p=2, dim=0)
         W_star = self.W / W_norm.expand_as(self.W)
-        self.h = self.f(self.bn(torch.mm(x, W_star)))
+        #self.h = self.f(self.bn(torch.mm(x, W_star)))
+        self.h = self.f(torch.mm(x, W_star))
         x_hat = torch.mm(self.h, W_star.t())
         return x_hat
 

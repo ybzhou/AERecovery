@@ -18,7 +18,7 @@ p = 0.02
 l_max = 1
 n_epoch = 100
 batch_size = 100
-regc = torch.FloatTensor([1e-3])
+regc = torch.FloatTensor([0])
 disp_freq = 100
 cuda = torch.cuda.is_available()
 torch.manual_seed(seed)
@@ -31,12 +31,12 @@ W, _, _ = np.linalg.svd(randW, full_matrices=False)
 W = W/np.linalg.norm(W, 2, 1, True)
 data = np.dot(h, W)
 
-#data -= data.mean(axis=0)
+data -= data.mean(axis=0)
 
-norm_data = torch.from_numpy(data).type(torch.FloatTensor)
+#norm_data = torch.from_numpy(data).type(torch.FloatTensor)
 
 
-model = AutoEncoder(D, M, F.relu)
+model = AutoEncoder(D, M, F.relu) #, W.T)
 if cuda:
     model.cuda()
     regc = Variable(regc.cuda())
@@ -44,12 +44,13 @@ else:
     regc = Variable(regc)
 cost_func = nn.MSELoss(size_average=False)
 opt = optim.SGD(model.parameters(), lr = 0.01)
-# opt = optim.Adam(model.parameters(), lr = 1e-3)
+# opt = optim.Adam(model.parameters(), lr = 1e-4)
 
 cost = []
 coherence = []
 sparsity = []
 dot = []
+kl = []
 n_batch = N//batch_size
 for epoch in range(n_epoch):
     running_loss = 0.0
@@ -61,7 +62,7 @@ for epoch in range(n_epoch):
     if cuda:
         norm_data.cuda()
 
-    #h_recovered = None
+    h_recovered = None
     for batch_idx in range(n_batch):
         opt.zero_grad()
 
@@ -70,10 +71,10 @@ for epoch in range(n_epoch):
         else:
             x = Variable(norm_data[batch_idx*batch_size: (batch_idx+1)*batch_size,:])
         x_hat = model(x)
-        #if h_recovered is None:
-        #    h_recovered = model.hidden().data.numpy()
-        #else:
-        #    h_recovered = np.vstack((h_recovered, model.hidden().data.numpy()))
+        if h_recovered is None:
+            h_recovered = model.hidden().data.cpu().numpy()
+        else:
+            h_recovered = np.vstack((h_recovered, model.hidden().data.cpu().numpy()))
 
         loss = cost_func(x_hat, x) + regc*model.regularizer()
         loss.backward()
@@ -100,8 +101,9 @@ for epoch in range(n_epoch):
     W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
     ret = greedy_pair(W, W_hat)
     dot.append(ret.mean())
-    print('avg dot: {}, min: {}, max: {}'.format(dot[-1], ret.min(), ret.max()))
-
+    print('avg dot: {}, med: {}, min: {}, max: {}'.format(dot[-1], np.median(ret), ret.min(), ret.max()))
+    kl.append(KL_divergence(h, h_recovered, l_max, nbins=10))
+    print('KL: {}'.format(kl[-1]))
 
 x_axis = np.linspace(0, n_epoch*batch_size, len(coherence))
 print(x_axis.shape, len(coherence))
@@ -110,6 +112,7 @@ fig, ax = plt.subplots()
 l2, = ax.plot(x_axis, coherence, '-')
 # l3, = ax.plot(x_axis, sparsity)
 l4, = ax.plot(x_axis[4::5], dot)
+l5, = ax.plot(x_axis[4::5], kl)
 plt.savefig("result.jpg")
 print('Done')
 
