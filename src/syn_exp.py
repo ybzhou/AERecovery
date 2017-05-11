@@ -43,19 +43,20 @@ if cuda:
 else:
     regc = Variable(regc)
 cost_func = nn.MSELoss(size_average=False)
-opt = optim.SGD(model.parameters(), lr = 0.01)
-# opt = optim.Adam(model.parameters(), lr = 1e-4)
+# opt = optim.SGD(model.parameters(), lr = 0.01)
+opt = optim.Adam(model.parameters(), lr = 1e-3)
 
-cost = []
-coherence = []
-sparsity = []
-dot = []
-kl = []
 n_batch = N//batch_size
+cost = np.zeros(n_epoch*n_batch//disp_freq)
+coherence = np.zeros(n_epoch*n_batch//disp_freq)
+dot = np.zeros(n_epoch)
+dot_lower = np.zeros(n_epoch)
+dot_upper = np.zeros(n_epoch)
+apre = np.zeros(n_epoch)
+
 for epoch in range(n_epoch):
     running_loss = 0.0
     running_coherence = 0.0
-    running_sparsity = 0.0
 
     perm_idx = np.random.permutation(N)
     norm_data = torch.from_numpy(data[perm_idx]).type(torch.FloatTensor)
@@ -76,43 +77,44 @@ for epoch in range(n_epoch):
         else:
             h_recovered = np.vstack((h_recovered, model.hidden().data.cpu().numpy()))
 
-        loss = cost_func(x_hat, x) + regc*model.regularizer()
+        loss = cost_func(x_hat, x) #+ regc*model.regularizer()
         loss.backward()
         opt.step()
         running_loss += loss.data[0]
-        running_coherence += model.regularizer().data[0]
-        running_sparsity += model.sparsity().data[0]/(batch_size*M)
+        crt_W = model.W.data.cpu().numpy().astype('float64')
+        crt_W = crt_W / np.linalg.norm(crt_W, 2, 0, True)
+        dot_prod = np.dot(crt_W.T, crt_W) - np.eye(M)
+        running_coherence += np.max(dot_prod)
 
         if batch_idx % disp_freq == disp_freq-1:  # print every 10 mini-batches
-            print('[%d, %5d] loss: %.3f, coherence: %.3f, sparsity: %.3f'  %
-                  (epoch + 1, batch_idx + 1, running_loss / disp_freq, running_coherence/disp_freq,
-                   running_sparsity/disp_freq))
-            cost.append(running_loss/disp_freq)
-            coherence.append(running_coherence/disp_freq)
-            sparsity.append(running_sparsity/disp_freq)
+            print('[%d, %5d] loss: %.3f, coherence: %.3f'  %
+                  (epoch + 1, batch_idx + 1, running_loss / disp_freq,
+                   running_coherence/disp_freq))
+            # print( epoch*n_batch//disp_freq+batch_idx//disp_freq )
+            cost[(epoch*n_batch+batch_idx)//disp_freq] = running_loss/disp_freq
+            coherence[(epoch*n_batch+batch_idx)//disp_freq] = running_coherence/disp_freq
             running_loss = 0.0
             running_coherence = 0.0
-            running_sparsity = 0.0
-    
-    if cuda:
-        W_hat = model.W.data.cpu().numpy().astype('float64').T
-    else:
-        W_hat = model.W.data.numpy().astype('float64').T
-    W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
-    ret = greedy_pair(W, W_hat)
-    dot.append(ret.mean())
-    print('avg dot: {}, med: {}, min: {}, max: {}'.format(dot[-1], np.median(ret), ret.min(), ret.max()))
-    kl.append(KL_divergence(h, h_recovered, l_max, nbins=10))
-    print('KL: {}'.format(kl[-1]))
 
-x_axis = np.linspace(0, n_epoch*batch_size, len(coherence))
+    W_hat = model.W.data.cpu().numpy().astype('float64').T
+
+    W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
+    ret, pairs = greedy_pair(W, W_hat)
+    dot[epoch] = np.percentile(ret, 50)
+    dot_lower[epoch] = np.percentile(ret, 25)
+    dot_upper[epoch] = np.percentile(ret, 75)
+    print('dot med: {}, min: {}, max: {}'.format(dot[epoch], dot_lower[epoch], dot_upper[epoch]))
+    apre[epoch] = APRE(h[perm_idx], h_recovered, p, pairs)
+    print('APRE: {}'.format(apre[epoch]))
+
+x_axis = np.linspace(0, n_epoch*batch_size, coherence.shape[0])
 print(x_axis.shape, len(coherence))
 fig, ax = plt.subplots()
-# l1, = ax.plot(cost, '--')
+l1, = ax.plot(x_axis, cost, '--')
 l2, = ax.plot(x_axis, coherence, '-')
 # l3, = ax.plot(x_axis, sparsity)
 l4, = ax.plot(x_axis[4::5], dot)
-l5, = ax.plot(x_axis[4::5], kl)
+l5, = ax.plot(x_axis[4::5], apre)
 plt.savefig("result.jpg")
 print('Done')
 

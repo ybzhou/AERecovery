@@ -17,13 +17,15 @@ class AutoEncoder(nn.Module):
             init.orthogonal(self.W)
         else:
             self.W = Parameter(torch.FloatTensor(W))
-        self.bn = nn.BatchNorm1d(h_dim)
+
+        self.b = Parameter(torch.FloatTensor(h_dim))
 
     def forward(self, x):
         W_norm = torch.norm(self.W, p=2, dim=0)
         W_star = self.W / W_norm.expand_as(self.W)
-        #self.h = self.f(self.bn(torch.mm(x, W_star)))
-        self.h = self.f(torch.mm(x, W_star))
+        pre_act = torch.mm(x, W_star)
+        pre_act += self.b.expand_as(pre_act)
+        self.h = self.f(pre_act)
         x_hat = torch.mm(self.h, W_star.t())
         return x_hat
 
