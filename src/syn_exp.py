@@ -1,4 +1,4 @@
-import numpy as np
+import pickle
 import torch.nn.functional as F
 import torch.optim as optim
 import torch
@@ -43,8 +43,8 @@ if cuda:
 else:
     regc = Variable(regc)
 cost_func = nn.MSELoss(size_average=False)
-# opt = optim.SGD(model.parameters(), lr = 0.01)
-opt = optim.Adam(model.parameters(), lr = 1e-3)
+opt = optim.SGD(model.parameters(), lr = 0.01)
+# opt = optim.Adam(model.parameters(), lr = 1e-3)
 
 n_batch = N//batch_size
 cost = np.zeros(n_epoch*n_batch//disp_freq)
@@ -110,11 +110,18 @@ for epoch in range(n_epoch):
 x_axis = np.linspace(0, n_epoch*batch_size, coherence.shape[0])
 print(x_axis.shape, len(coherence))
 fig, ax = plt.subplots()
-l1, = ax.plot(x_axis, cost, '--')
-l2, = ax.plot(x_axis, coherence, '-')
-# l3, = ax.plot(x_axis, sparsity)
-l4, = ax.plot(x_axis[4::5], dot)
-l5, = ax.plot(x_axis[4::5], apre)
+l1, = ax.plot(x_axis, cost, '--', label='Training Cost')
+l2, = ax.plot(x_axis, coherence, '-', label='Coherence')
+l3, = ax.errorbar(x_axis[4::5], dot, yerr=[dot_lower, dot_upper], label='Dot Product')
+l4, = ax.plot(x_axis[4::5], apre, label='APRE')
 plt.savefig("result.jpg")
+
+data = {'cost': cost,
+        'coherence': coherence,
+        'dot': (dot, dot_lower, dot_upper),
+        'apre': apre}
+
+with open('results.pkl', 'wb') as f:
+    pickle.dump(data, f)
 print('Done')
 
