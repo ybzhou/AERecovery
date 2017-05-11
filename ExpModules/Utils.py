@@ -31,6 +31,17 @@ def greedy_pair(W, W_hat):
                 break
 
     ret = np.zeros(dist.shape[0])
+    assert len(paired) == dist.shape[0], "should have paired all vectors"
     for i, j in paired:
         ret[i] = dist[i, j]
-    return ret
+    return ret, paired
+
+
+def APRE(h, h_hat, p, pairs, eps=0.1):
+    w = np.zeros(h.shape)
+    w[h>0] = 0.5/p
+    w[h==0] = 0.5/(1-p)
+    error = 0
+    for i, j in pairs:
+        error += w[:,i] * (np.absolute(h[:,i]-h_hat[:,j])>eps)
+    return error.sum()/(np.prod(h.shape))
