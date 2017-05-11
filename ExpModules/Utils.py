@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import entropy
+import matplotlib.pyplot as plt
 
 def BINS(n, d, p, l):
     prob = np.random.rand(n, d)
@@ -45,3 +46,25 @@ def APRE(h, h_hat, p, pairs, eps=0.1):
     for i, j in enumerate(pairs):
         error += w[:,i] * (np.absolute(h[:,i]-h_hat[:,j])>eps)
     return error.sum()/(np.prod(h.shape))
+
+def save_plot(x, y, color, label, x_label, y_label, save_file_name):
+    fig, ax = plt.subplots()
+    ax.plot(x, y, color=color, label=label)
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    ax.set_aspect(abs(x1 - x0) / abs(y1 - y0))
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    plt.savefig(save_file_name)
+
+def save_errorbar(x, y, y_lower, y_upper, color, label, x_label, y_label,
+                  save_file_name):
+    fig, ax = plt.subplots()
+    ax.errorbar(x, y, color=color, yerr=[y-y_lower, y_upper-y],
+                 label=label, elinewidth=1, capsize=3)
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    ax.set_aspect(abs(x1 - x0) / abs(y1 - y0))
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    plt.savefig(save_file_name)

@@ -127,7 +127,7 @@ l2, = ax.plot(x_axis, coherence, '-', label='Coherence')
 plt.savefig("coherence.jpg")
 
 fig, ax = plt.subplots()
-l3 = ax.errorbar(range(n_epoch), dot, yerr=[dot_lower, dot_upper], label='Dot Product')
+l3 = ax.errorbar(range(n_epoch), dot, fmt='o', yerr=[dot-dot_lower, dot_upper-dot_lower], label='Dot Product')
 plt.savefig("dot.jpg")
 fig, ax = plt.subplots()
 l4, = ax.plot(range(n_epoch), apre, label='APRE')
