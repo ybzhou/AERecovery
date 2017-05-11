@@ -16,7 +16,7 @@ M = 200
 D = 180
 p = 0.02
 l_max = 1
-n_epoch = 100
+n_epoch = 1 #100
 batch_size = 100
 regc = torch.FloatTensor([0])
 disp_freq = 100
@@ -120,10 +120,18 @@ x_axis = np.linspace(0, n_epoch*batch_size, coherence.shape[0])
 print(x_axis.shape, len(coherence))
 fig, ax = plt.subplots()
 l1, = ax.plot(x_axis, cost, '--', label='Training Cost')
+plt.savefig("tr_cost.jpg")
+
+fig, ax = plt.subplots()
 l2, = ax.plot(x_axis, coherence, '-', label='Coherence')
-l3, = ax.errorbar(x_axis[4::5], dot, yerr=[dot_lower, dot_upper], label='Dot Product')
-l4, = ax.plot(x_axis[4::5], apre, label='APRE')
-plt.savefig("result.jpg")
+plt.savefig("coherence.jpg")
+
+fig, ax = plt.subplots()
+l3 = ax.errorbar(range(n_epoch), dot, yerr=[dot_lower, dot_upper], label='Dot Product')
+plt.savefig("dot.jpg")
+fig, ax = plt.subplots()
+l4, = ax.plot(range(n_epoch), apre, label='APRE')
+plt.savefig("apre.jpg")
 
 data = {'cost': cost,
         'coherence': coherence,
