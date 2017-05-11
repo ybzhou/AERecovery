@@ -22,17 +22,17 @@ def KL_divergence(p_data, q_data, l_max, nbins=100):
 
 def greedy_pair(W, W_hat):
     dist = np.dot(W, W_hat.T)
-    paired = set()
+    paired = []
     for i in range(dist.shape[0]):
         idx = np.argsort(dist[i])[::-1]
         for j in idx:
-            if (i, j) not in paired and (j, i) not in paired:
-                paired.add((i,j))
+            if j not in paired:
+                paired.append(j)
                 break
 
     ret = np.zeros(dist.shape[0])
     assert len(paired) == dist.shape[0], "should have paired all vectors"
-    for i, j in paired:
+    for i, j in enumerate(paired):
         ret[i] = dist[i, j]
     return ret, paired
 
@@ -42,6 +42,6 @@ def APRE(h, h_hat, p, pairs, eps=0.1):
     w[h>0] = 0.5/p
     w[h==0] = 0.5/(1-p)
     error = 0
-    for i, j in pairs:
+    for i, j in enumerate(pairs):
         error += w[:,i] * (np.absolute(h[:,i]-h_hat[:,j])>eps)
     return error.sum()/(np.prod(h.shape))

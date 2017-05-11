@@ -100,6 +100,15 @@ for epoch in range(n_epoch):
 
     W_hat = W_hat / np.linalg.norm(W_hat, 2, 1, True)
     ret, pairs = greedy_pair(W, W_hat)
+    # a = []
+    # b = []
+    # for i, j in enumerate(pairs):
+    #     a.append(i)
+    #     b.append(j)
+    # truth = [i for i in range(M)]
+    # print(sorted(b))
+    # assert sorted(a) == truth, "aa"
+    # assert sorted(b) == truth, "bb"
     dot[epoch] = np.percentile(ret, 50)
     dot_lower[epoch] = np.percentile(ret, 25)
     dot_upper[epoch] = np.percentile(ret, 75)
